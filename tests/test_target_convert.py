@@ -60,7 +60,7 @@ class ConvertTargetListsTestCase(unittest.TestCase):
         self.assertIsNotNone(addresses)
         self.assertEqual(len(addresses), 11)
 
-        for i in range(0, 10):
+        for i in range(10):
             self.assertIn(f'195.70.81.{str(i)}', addresses)
 
     def test_target_str_with_trailing_comma(self):

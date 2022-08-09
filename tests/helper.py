@@ -32,7 +32,7 @@ def assert_called_once(mock: Mock):
     if hasattr(mock, 'assert_called_once'):
         return mock.assert_called_once()
 
-    if not mock.call_count == 1:
+    if mock.call_count != 1:
         # pylint: disable=protected-access
         msg = (
             f"Expected '{mock._mock_name or 'mock'}' to have "
@@ -73,7 +73,7 @@ class FakeDataManager:
         pass
 
     def dict(self):
-        return dict()
+        return {}
 
 
 class DummyXML:
@@ -125,59 +125,41 @@ class DummyXML:
     def get_detection_vt_as_xml_str(
         vt_id, detection=None, qod_type=None, qod=None
     ):
-        response = '<detection qod_type="package">some detection</detection>'
-
-        return response
+        return '<detection qod_type="package">some detection</detection>'
 
     @staticmethod
     def get_summary_vt_as_xml_str(vt_id, summary):
-        response = '<summary>Some summary</summary>'
-
-        return response
+        return '<summary>Some summary</summary>'
 
     @staticmethod
     def get_affected_vt_as_xml_str(vt_id, affected):
-        response = '<affected>Some affected</affected>'
-
-        return response
+        return '<affected>Some affected</affected>'
 
     @staticmethod
     def get_impact_vt_as_xml_str(vt_id, impact):
-        response = '<impact>Some impact</impact>'
-
-        return response
+        return '<impact>Some impact</impact>'
 
     @staticmethod
     def get_insight_vt_as_xml_str(vt_id, insight):
-        response = '<insight>Some insight</insight>'
-
-        return response
+        return '<insight>Some insight</insight>'
 
     @staticmethod
     def get_solution_vt_as_xml_str(
         vt_id, solution, solution_type=None, solution_method=None
     ):
-        response = '<solution>Some solution</solution>'
-
-        return response
+        return '<solution>Some solution</solution>'
 
     @staticmethod
     def get_creation_time_vt_as_xml_str(
         vt_id, vt_creation_time
     ):  # pylint: disable=arguments-differ
-        response = f'<creation_time>{vt_creation_time}</creation_time>'
-
-        return response
+        return f'<creation_time>{vt_creation_time}</creation_time>'
 
     @staticmethod
     def get_modification_time_vt_as_xml_str(
         vt_id, vt_modification_time
     ):  # pylint: disable=arguments-differ
-        response = (
-            f'<modification_time>{vt_modification_time}</modification_time>'
-        )
-
-        return response
+        return f'<modification_time>{vt_modification_time}</modification_time>'
 
 
 class DummyWrapper(OSPDaemon):

@@ -27,8 +27,7 @@ if not _has_init_subclass:
         """Metaclass that implements PEP 487 protocol"""
 
         def __new__(cls, name, bases, ns, **kwargs):
-            __init_subclass__ = ns.pop("__init_subclass__", None)
-            if __init_subclass__:
+            if __init_subclass__ := ns.pop("__init_subclass__", None):
                 __init_subclass__ = classmethod(__init_subclass__)
                 ns["__init_subclass__"] = __init_subclass__
             return super().__new__(cls, name, bases, ns, **kwargs)

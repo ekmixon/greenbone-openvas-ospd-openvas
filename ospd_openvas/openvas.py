@@ -86,15 +86,12 @@ class Openvas:
             return None
 
         version = result.split('\n')
-        if version[0].find('OpenVAS') < 0:
-            return None
-
-        return version[0]
+        return None if version[0].find('OpenVAS') < 0 else version[0]
 
     @staticmethod
     def get_settings() -> Dict[str, Any]:
         """Parses the current settings of the openvas executable"""
-        param_list = dict()
+        param_list = {}
 
         try:
             result = subprocess.check_output(['openvas', '-s'])
@@ -114,9 +111,7 @@ class Openvas:
                 continue
 
             key = key.strip()
-            value = value.strip()
-
-            if value:
+            if value := value.strip():
                 value = _BOOL_DICT.get(value, value)
                 param_list[key] = value
 
@@ -157,7 +152,7 @@ class Openvas:
 
         try:
             return psutil.Popen(cmd, shell=False)
-        except (psutil.Error, OSError, FileNotFoundError) as e:
+        except (psutil.Error, OSError) as e:
             # the command is not available
             logger.warning("Could not start scan process. Reason %s", e)
             return None

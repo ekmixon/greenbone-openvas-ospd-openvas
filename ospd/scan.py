@@ -75,7 +75,7 @@ class ScanCollection:
         self.data_manager = (
             None
         )  # type: Optional[multiprocessing.managers.SyncManager]
-        self.scans_table = dict()  # type: Dict
+        self.scans_table = {}
         self.file_storage_dir = file_storage_dir
 
     def init(self):
@@ -209,13 +209,13 @@ class ScanCollection:
 
     def clean_temp_result_list(self, scan_id):
         """Clean the results stored in the temporary list."""
-        self.scans_table[scan_id]['temp_results'] = list()
+        self.scans_table[scan_id]['temp_results'] = []
 
     def restore_temp_result_list(self, scan_id):
         """Add the results stored in the temporary list into the results
         list again."""
-        result_aux = self.scans_table[scan_id].get('results', list())
-        result_aux.extend(self.scans_table[scan_id].get('temp_results', list()))
+        result_aux = self.scans_table[scan_id].get('results', [])
+        result_aux.extend(self.scans_table[scan_id].get('temp_results', []))
 
         # Propagate results
         self.scans_table[scan_id]['results'] = result_aux
@@ -232,18 +232,18 @@ class ScanCollection:
 
         max_res works only together with pop_results.
         """
-        if pop_res and max_res:
-            result_aux = self.scans_table[scan_id].get('results', list())
-            self.scans_table[scan_id]['results'] = result_aux[max_res:]
-            self.scans_table[scan_id]['temp_results'] = result_aux[:max_res]
-            return iter(self.scans_table[scan_id]['temp_results'])
-        elif pop_res:
-            self.scans_table[scan_id]['temp_results'] = self.scans_table[
-                scan_id
-            ].get('results', list())
-            self.scans_table[scan_id]['results'] = list()
-            return iter(self.scans_table[scan_id]['temp_results'])
+        if pop_res:
+            if max_res:
+                result_aux = self.scans_table[scan_id].get('results', [])
+                self.scans_table[scan_id]['results'] = result_aux[max_res:]
+                self.scans_table[scan_id]['temp_results'] = result_aux[:max_res]
+            else:
+                self.scans_table[scan_id]['temp_results'] = self.scans_table[
+                    scan_id
+                ].get('results', [])
 
+                self.scans_table[scan_id]['results'] = []
+            return iter(self.scans_table[scan_id]['temp_results'])
         return iter(self.scans_table[scan_id]['results'])
 
     def ids_iterator(self) -> Iterator[str]:
@@ -281,10 +281,10 @@ class ScanCollection:
                 'start_scan',
             )
 
-        scan_info['results'] = list()
-        scan_info['temp_results'] = list()
+        scan_info['results'] = []
+        scan_info['temp_results'] = []
         scan_info['progress'] = ScanProgress.INIT.value
-        scan_info['target_progress'] = dict()
+        scan_info['target_progress'] = {}
         scan_info['count_alive'] = 0
         scan_info['count_dead'] = 0
         scan_info['count_total'] = None
@@ -316,7 +316,7 @@ class ScanCollection:
         """
 
         if not options:
-            options = dict()
+            options = {}
 
         credentials = target.pop('credentials')
 
@@ -332,7 +332,7 @@ class ScanCollection:
             'vts': vts,
         }
 
-        if scan_id is None or scan_id == '':
+        if scan_id is None or not scan_id:
             scan_id = str(uuid.uuid4())
 
         pickler = DataPickler(self.file_storage_dir)
@@ -352,7 +352,7 @@ class ScanCollection:
     def set_status(self, scan_id: str, status: ScanStatus) -> None:
         """Sets scan_id scan's status."""
         self.scans_table[scan_id]['status'] = status
-        if status == ScanStatus.STOPPED or status == ScanStatus.INTERRUPTED:
+        if status in [ScanStatus.STOPPED, ScanStatus.INTERRUPTED]:
             self.scans_table[scan_id]['end_time'] = int(time.time())
 
     def get_status(self, scan_id: str) -> ScanStatus:
@@ -532,13 +532,11 @@ class ScanCollection:
 
     def get_host_count(self, scan_id: str) -> int:
         """Get total host count in the target."""
-        host = self.get_host_list(scan_id)
-        total_hosts = 0
-
-        if host:
-            total_hosts = len(target_str_to_list(host))
-
-        return total_hosts
+        return (
+            len(target_str_to_list(host))
+            if (host := self.get_host_list(scan_id))
+            else 0
+        )
 
     def get_ports(self, scan_id: str) -> str:
         """Get a scan's ports list."""

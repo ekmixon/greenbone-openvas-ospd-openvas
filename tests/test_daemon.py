@@ -580,7 +580,7 @@ class TestOspdOpenvas(TestCase):
         target_element = w.create_xml_target()
         targets = OspRequest.process_target_element(target_element)
         w.create_scan('123-456', targets, None, [])
-        w.scan_collection.scans_table['123-456']['results'] = list()
+        w.scan_collection.scans_table['123-456']['results'] = []
         results = ["ALARM||| ||| ||| ||| |||some alarm|||path", None]
         MockDBClass.get_result.return_value = results
         mock_add_scan_alarm_to_list.return_value = None

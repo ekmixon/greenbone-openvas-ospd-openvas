@@ -84,7 +84,7 @@ class DryRun:
 
             # Check if the scan was stopped.
             status = self._daemon.get_scan_status(scan_id)
-            if status == ScanStatus.STOPPED or status == ScanStatus.FINISHED:
+            if status in [ScanStatus.STOPPED, ScanStatus.FINISHED]:
                 logger.debug(
                     'Task %s stopped or finished.',
                     scan_id,
@@ -122,18 +122,18 @@ class DryRun:
                 if res_type == 1:
                     res_list.add_scan_error_to_list(
                         host=current_host,
-                        hostname=current_host + ".hostname.net",
+                        hostname=f"{current_host}.hostname.net",
                         name=rname,
-                        value="error running the script " + oid,
+                        value=f"error running the script {oid}",
                         port=port,
                         test_id=oid,
                         uri="No location",
                     )
-                # Log
+
                 elif res_type == 2:
                     res_list.add_scan_log_to_list(
                         host=current_host,
-                        hostname=current_host + ".hostname.net",
+                        hostname=f"{current_host}.hostname.net",
                         name=rname,
                         value="Log generate from a dry run scan for the script "
                         + oid,
@@ -142,12 +142,12 @@ class DryRun:
                         test_id=oid,
                         uri="No location",
                     )
-                # Alarm
+
                 else:
                     r_severity = vthelper.get_severity_score(vt)
                     res_list.add_scan_alarm_to_list(
                         host=current_host,
-                        hostname=current_host + ".hostname.net",
+                        hostname=f"{current_host}.hostname.net",
                         name=rname,
                         value="Log generate from a dry run scan for the script "
                         + oid,
@@ -157,6 +157,7 @@ class DryRun:
                         qod=rqod,
                         uri="No location",
                     )
+
 
             res_list.add_scan_log_to_list(
                 host=current_host,
@@ -175,8 +176,7 @@ class DryRun:
                 self._daemon.scan_collection.add_result_list(scan_id, res_list)
 
             # Set the host scan progress as finished
-            host_progress = dict()
-            host_progress[current_host] = ScanProgress.FINISHED
+            host_progress = {current_host: ScanProgress.FINISHED}
             self._daemon.set_scan_progress_batch(
                 scan_id, host_progress=host_progress
             )
@@ -185,8 +185,7 @@ class DryRun:
             # calculate the scan progress.
             # This is quite importan, since the final scan status depends on
             # the progress calculation.
-            finished_host = list()
-            finished_host.append(current_host)
+            finished_host = [current_host]
             self._daemon.sort_host_finished(scan_id, finished_host)
 
             time.sleep(1)

@@ -109,14 +109,10 @@ class MQTTSubscriber(Subscriber):
 
     @staticmethod
     def on_connect(_client, _userdata, _flags, rc, _properties):
-        if rc == 0:
-            # If we previously had active subscription we subscribe to them
-            # again because they got lost after a broker disconnect.
-            # Userdata is set in __init__() and filled in subscribe()
-            if _userdata:
-                for topic, func in _userdata.items():
-                    _client.subscribe(topic, qos=QOS_AT_LEAST_ONCE)
-                    _client.message_callback_add(topic, func)
+        if rc == 0 and _userdata:
+            for topic, func in _userdata.items():
+                _client.subscribe(topic, qos=QOS_AT_LEAST_ONCE)
+                _client.message_callback_add(topic, func)
 
     @staticmethod
     def _handle_message(

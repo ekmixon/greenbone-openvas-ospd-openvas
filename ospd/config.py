@@ -44,7 +44,7 @@ class Config:
         self._defaults.update(parser.defaults())
 
         for key, value in parser.items(def_section):
-            self._config.setdefault(def_section, dict())[key] = value
+            self._config.setdefault(def_section, {})[key] = value
 
     def defaults(self) -> Dict:
         return self._defaults

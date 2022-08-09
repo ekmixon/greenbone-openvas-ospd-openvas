@@ -849,7 +849,7 @@ class PreferenceHandlerTestCase(TestCase):
             p_handler.kbdb.add_scan_preferences = MagicMock()
             p_handler.prepare_boreas_alive_test()
 
-            calls = [call(p_handler.scan_id, [BOREAS_ALIVE_TEST + '|||2'])]
+            calls = [call(p_handler.scan_id, [f'{BOREAS_ALIVE_TEST}|||2'])]
             p_handler.kbdb.add_scan_preferences.assert_has_calls(calls)
 
         # ALIVE_TEST_TCP_SYN_SERVICE as alive test.
@@ -865,7 +865,7 @@ class PreferenceHandlerTestCase(TestCase):
             p_handler.kbdb.add_scan_preferences = MagicMock()
             p_handler.prepare_boreas_alive_test()
 
-            calls = [call(p_handler.scan_id, [BOREAS_ALIVE_TEST + '|||16'])]
+            calls = [call(p_handler.scan_id, [f'{BOREAS_ALIVE_TEST}|||16'])]
             p_handler.kbdb.add_scan_preferences.assert_has_calls(calls)
 
         # ICMP was chosen as alive test.
@@ -881,7 +881,7 @@ class PreferenceHandlerTestCase(TestCase):
             p_handler.kbdb.add_scan_preferences = MagicMock()
             p_handler.prepare_boreas_alive_test()
 
-            calls = [call(p_handler.scan_id, [BOREAS_ALIVE_TEST + '|||2'])]
+            calls = [call(p_handler.scan_id, [f'{BOREAS_ALIVE_TEST}|||2'])]
             p_handler.kbdb.add_scan_preferences.assert_has_calls(calls)
 
         # "Scan Config Default" as alive_test.
@@ -897,7 +897,7 @@ class PreferenceHandlerTestCase(TestCase):
             p_handler.kbdb.add_scan_preferences = MagicMock()
             p_handler.prepare_boreas_alive_test()
 
-            calls = [call(p_handler.scan_id, [BOREAS_ALIVE_TEST + '|||2'])]
+            calls = [call(p_handler.scan_id, [f'{BOREAS_ALIVE_TEST}|||2'])]
             p_handler.kbdb.add_scan_preferences.assert_has_calls(calls)
 
         # TCP-SYN alive test and dedicated port list for alive scan provided.
@@ -917,11 +917,10 @@ class PreferenceHandlerTestCase(TestCase):
             p_handler.prepare_boreas_alive_test()
 
             calls = [
-                call(p_handler.scan_id, [BOREAS_ALIVE_TEST + '|||16']),
-                call(
-                    p_handler.scan_id, [BOREAS_ALIVE_TEST_PORTS + '|||80,137']
-                ),
+                call(p_handler.scan_id, [f'{BOREAS_ALIVE_TEST}|||16']),
+                call(p_handler.scan_id, [f'{BOREAS_ALIVE_TEST_PORTS}|||80,137']),
             ]
+
             p_handler.kbdb.add_scan_preferences.assert_has_calls(calls)
 
     @patch('ospd_openvas.db.KbDB')
@@ -954,7 +953,7 @@ class PreferenceHandlerTestCase(TestCase):
             p_handler.kbdb.add_scan_preferences = MagicMock()
             p_handler.prepare_boreas_alive_test()
 
-            calls = [call(p_handler.scan_id, [BOREAS_ALIVE_TEST + '|||2'])]
+            calls = [call(p_handler.scan_id, [f'{BOREAS_ALIVE_TEST}|||2'])]
             p_handler.kbdb.add_scan_preferences.assert_has_calls(calls)
 
         # ICMP was chosen as alive test.
@@ -970,7 +969,7 @@ class PreferenceHandlerTestCase(TestCase):
             p_handler.kbdb.add_scan_preferences = MagicMock()
             p_handler.prepare_boreas_alive_test()
 
-            calls = [call(p_handler.scan_id, [BOREAS_ALIVE_TEST + '|||2'])]
+            calls = [call(p_handler.scan_id, [f'{BOREAS_ALIVE_TEST}|||2'])]
             p_handler.kbdb.add_scan_preferences.assert_has_calls(calls)
 
         # tcp_syn as alive test.
@@ -986,7 +985,7 @@ class PreferenceHandlerTestCase(TestCase):
             p_handler.kbdb.add_scan_preferences = MagicMock()
             p_handler.prepare_boreas_alive_test()
 
-            calls = [call(p_handler.scan_id, [BOREAS_ALIVE_TEST + '|||16'])]
+            calls = [call(p_handler.scan_id, [f'{BOREAS_ALIVE_TEST}|||16'])]
             p_handler.kbdb.add_scan_preferences.assert_has_calls(calls)
 
         # tcp_ack as alive test.
@@ -1002,7 +1001,7 @@ class PreferenceHandlerTestCase(TestCase):
             p_handler.kbdb.add_scan_preferences = MagicMock()
             p_handler.prepare_boreas_alive_test()
 
-            calls = [call(p_handler.scan_id, [BOREAS_ALIVE_TEST + '|||1'])]
+            calls = [call(p_handler.scan_id, [f'{BOREAS_ALIVE_TEST}|||1'])]
             p_handler.kbdb.add_scan_preferences.assert_has_calls(calls)
 
         # arp as alive test.
@@ -1018,7 +1017,7 @@ class PreferenceHandlerTestCase(TestCase):
             p_handler.kbdb.add_scan_preferences = MagicMock()
             p_handler.prepare_boreas_alive_test()
 
-            calls = [call(p_handler.scan_id, [BOREAS_ALIVE_TEST + '|||4'])]
+            calls = [call(p_handler.scan_id, [f'{BOREAS_ALIVE_TEST}|||4'])]
             p_handler.kbdb.add_scan_preferences.assert_has_calls(calls)
 
         # arp as alive test.
@@ -1034,7 +1033,7 @@ class PreferenceHandlerTestCase(TestCase):
             p_handler.kbdb.add_scan_preferences = MagicMock()
             p_handler.prepare_boreas_alive_test()
 
-            calls = [call(p_handler.scan_id, [BOREAS_ALIVE_TEST + '|||8'])]
+            calls = [call(p_handler.scan_id, [f'{BOREAS_ALIVE_TEST}|||8'])]
             p_handler.kbdb.add_scan_preferences.assert_has_calls(calls)
 
         # all alive test methods
@@ -1057,7 +1056,7 @@ class PreferenceHandlerTestCase(TestCase):
             p_handler.kbdb.add_scan_preferences = MagicMock()
             p_handler.prepare_boreas_alive_test()
 
-            calls = [call(p_handler.scan_id, [BOREAS_ALIVE_TEST + '|||31'])]
+            calls = [call(p_handler.scan_id, [f'{BOREAS_ALIVE_TEST}|||31'])]
             p_handler.kbdb.add_scan_preferences.assert_has_calls(calls)
 
         # TCP-SYN alive test and dedicated port list for alive scan provided.
@@ -1078,11 +1077,10 @@ class PreferenceHandlerTestCase(TestCase):
             p_handler.prepare_boreas_alive_test()
 
             calls = [
-                call(p_handler.scan_id, [BOREAS_ALIVE_TEST + '|||16']),
-                call(
-                    p_handler.scan_id, [BOREAS_ALIVE_TEST_PORTS + '|||80,137']
-                ),
+                call(p_handler.scan_id, [f'{BOREAS_ALIVE_TEST}|||16']),
+                call(p_handler.scan_id, [f'{BOREAS_ALIVE_TEST_PORTS}|||80,137']),
             ]
+
             p_handler.kbdb.add_scan_preferences.assert_has_calls(calls)
 
     @patch('ospd_openvas.db.KbDB')
@@ -1104,7 +1102,7 @@ class PreferenceHandlerTestCase(TestCase):
             p_handler.prepare_boreas_alive_test()
 
             # has icmp and not consider_alive
-            calls = [call(p_handler.scan_id, [BOREAS_ALIVE_TEST + '|||2'])]
+            calls = [call(p_handler.scan_id, [f'{BOREAS_ALIVE_TEST}|||2'])]
             p_handler.kbdb.add_scan_preferences.assert_has_calls(calls)
 
     @patch('ospd_openvas.db.KbDB')

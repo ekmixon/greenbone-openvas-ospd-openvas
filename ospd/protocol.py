@@ -86,7 +86,7 @@ class OspRequest:
                         )
 
                     vt_value_id = vt_value.attrib.get('id')
-                    vt_value_value = vt_value.text if vt_value.text else ''
+                    vt_value_value = vt_value.text or ''
                     vt_selection[vt_id][vt_value_id] = vt_value_value
 
             if vt.tag == 'vt_group':
@@ -135,16 +135,12 @@ class OspRequest:
 
         for credential in cred_tree:
             service = credential.attrib.get('service')
-            credentials[service] = {}
-            credentials[service]['type'] = credential.attrib.get('type')
-
+            credentials[service] = {'type': credential.attrib.get('type')}
             if service == 'ssh':
                 credentials[service]['port'] = credential.attrib.get('port')
 
             for param in credential:
-                credentials[service][param.tag] = (
-                    param.text if param.text else ""
-                )
+                credentials[service][param.tag] = param.text or ""
 
         return credentials
 
@@ -165,21 +161,16 @@ class OspRequest:
         </alive_test_methods>
         """
         for child in alive_test_tree:
-            if child.tag == 'icmp':
-                if child.text is not None:
-                    options['icmp'] = child.text
-            if child.tag == 'tcp_ack':
-                if child.text is not None:
-                    options['tcp_ack'] = child.text
-            if child.tag == 'tcp_syn':
-                if child.text is not None:
-                    options['tcp_syn'] = child.text
-            if child.tag == 'arp':
-                if child.text is not None:
-                    options['arp'] = child.text
-            if child.tag == 'consider_alive':
-                if child.text is not None:
-                    options['consider_alive'] = child.text
+            if child.tag == 'icmp' and child.text is not None:
+                options['icmp'] = child.text
+            if child.tag == 'tcp_ack' and child.text is not None:
+                options['tcp_ack'] = child.text
+            if child.tag == 'tcp_syn' and child.text is not None:
+                options['tcp_syn'] = child.text
+            if child.tag == 'arp' and child.text is not None:
+                options['arp'] = child.text
+            if child.tag == 'consider_alive' and child.text is not None:
+                options['consider_alive'] = child.text
 
     @classmethod
     def process_target_element(cls, scanner_target: Element) -> Dict:
@@ -238,48 +229,49 @@ class OspRequest:
                             },
             }
         """
-        if scanner_target:
-            exclude_hosts = ''
-            finished_hosts = ''
-            ports = ''
-            hosts = None
-            credentials = {}  # type: Dict
-            options = {}
+        if not scanner_target:
+            return
+        exclude_hosts = ''
+        finished_hosts = ''
+        ports = ''
+        hosts = None
+        credentials = {}  # type: Dict
+        options = {}
 
-            for child in scanner_target:
-                if child.tag == 'hosts':
-                    hosts = child.text
-                if child.tag == 'exclude_hosts':
-                    exclude_hosts = child.text
-                if child.tag == 'finished_hosts':
-                    finished_hosts = child.text
-                if child.tag == 'ports':
-                    ports = child.text
-                if child.tag == 'credentials':
-                    credentials = cls.process_credentials_elements(child)
-                if child.tag == 'alive_test_methods':
-                    options['alive_test_methods'] = '1'
-                    cls.process_alive_test_methods(child, options)
-                if child.tag == 'alive_test':
-                    options['alive_test'] = child.text
-                if child.tag == 'alive_test_ports':
-                    options['alive_test_ports'] = child.text
-                if child.tag == 'reverse_lookup_unify':
-                    options['reverse_lookup_unify'] = child.text
-                if child.tag == 'reverse_lookup_only':
-                    options['reverse_lookup_only'] = child.text
+        for child in scanner_target:
+            if child.tag == 'exclude_hosts':
+                exclude_hosts = child.text
+            elif child.tag == 'finished_hosts':
+                finished_hosts = child.text
+            elif child.tag == 'hosts':
+                hosts = child.text
+            elif child.tag == 'ports':
+                ports = child.text
+            if child.tag == 'credentials':
+                credentials = cls.process_credentials_elements(child)
+            if child.tag == 'alive_test_methods':
+                options['alive_test_methods'] = '1'
+                cls.process_alive_test_methods(child, options)
+            if child.tag == 'alive_test':
+                options['alive_test'] = child.text
+            if child.tag == 'alive_test_ports':
+                options['alive_test_ports'] = child.text
+            if child.tag == 'reverse_lookup_unify':
+                options['reverse_lookup_unify'] = child.text
+            if child.tag == 'reverse_lookup_only':
+                options['reverse_lookup_only'] = child.text
 
-            if hosts:
-                return {
-                    'hosts': hosts,
-                    'ports': ports,
-                    'credentials': credentials,
-                    'exclude_hosts': exclude_hosts,
-                    'finished_hosts': finished_hosts,
-                    'options': options,
-                }
-            else:
-                raise OspdError('No target to scan')
+        if hosts:
+            return {
+                'hosts': hosts,
+                'ports': ports,
+                'credentials': credentials,
+                'exclude_hosts': exclude_hosts,
+                'finished_hosts': finished_hosts,
+                'options': options,
+            }
+        else:
+            raise OspdError('No target to scan')
 
 
 class OspResponse:

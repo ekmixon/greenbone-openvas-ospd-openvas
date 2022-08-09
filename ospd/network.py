@@ -54,7 +54,7 @@ def target_to_ipv6(target: str) -> Optional[List]:
 def ipv4_range_to_list(start_packed, end_packed) -> Optional[List]:
     """Return a list of IPv4 entries from start_packed to end_packed."""
 
-    new_list = list()
+    new_list = []
     start = struct.unpack('!L', start_packed)[0]
     end = struct.unpack('!L', end_packed)[0]
 
@@ -78,13 +78,7 @@ def target_to_ipv4_short(target: str) -> Optional[List]:
     except (socket.error, ValueError):
         return None
 
-    # For subnet with mask lower than /24, ip addresses ending in .0 are
-    # allowed.
-    # The next code checks for a range starting with a A.B.C.0.
-    # For the octet equal to 0, bytes() returns an empty binary b'',
-    # which must be handle in a special way.
-    _start_value = bytes(start_packed[3])
-    if _start_value:
+    if _start_value := bytes(start_packed[3]):
         start_value = int(binascii.hexlify(_start_value), 16)
     elif _start_value == b'':
         start_value = 0
@@ -94,7 +88,7 @@ def target_to_ipv4_short(target: str) -> Optional[List]:
     if end_value < 0 or end_value > 255 or end_value < start_value:
         return None
 
-    end_packed = start_packed[0:3] + struct.pack('B', end_value)
+    end_packed = start_packed[:3] + struct.pack('B', end_value)
 
     return ipv4_range_to_list(start_packed, end_packed)
 
@@ -182,7 +176,7 @@ def target_to_ipv4_long(target: str) -> Optional[List]:
 def ipv6_range_to_list(start_packed, end_packed) -> List:
     """Return a list of IPv6 entries from start_packed to end_packed."""
 
-    new_list = list()
+    new_list = []
 
     start = int(binascii.hexlify(start_packed), 16)
     end = int(binascii.hexlify(end_packed), 16)
@@ -242,46 +236,26 @@ def target_to_ipv6_long(target: str) -> Optional[List]:
 def target_to_hostname(target: str) -> Optional[List]:
     """Attempt to return a single hostname list from a target string."""
 
-    if len(target) == 0 or len(target) > 255:
+    if not target or len(target) > 255:
         return None
 
-    if not re.match(r'^[\w.-]+$', target):
-        return None
-
-    return [target]
+    return [target] if re.match(r'^[\w.-]+$', target) else None
 
 
 def target_to_list(target: str) -> Optional[List]:
     """Attempt to return a list of single hosts from a target string."""
 
-    # Is it an IPv4 address ?
-    new_list = target_to_ipv4(target)
-    # Is it an IPv6 address ?
-    if not new_list:
-        new_list = target_to_ipv6(target)
-    # Is it an IPv4 CIDR ?
-    if not new_list:
-        new_list = target_to_ipv4_cidr(target)
-    # Is it an IPv6 CIDR ?
-    if not new_list:
-        new_list = target_to_ipv6_cidr(target)
-    # Is it an IPv4 short-range ?
-    if not new_list:
-        new_list = target_to_ipv4_short(target)
-    # Is it an IPv4 long-range ?
-    if not new_list:
-        new_list = target_to_ipv4_long(target)
-    # Is it an IPv6 short-range ?
-    if not new_list:
-        new_list = target_to_ipv6_short(target)
-    # Is it an IPv6 long-range ?
-    if not new_list:
-        new_list = target_to_ipv6_long(target)
-    # Is it a hostname ?
-    if not new_list:
-        new_list = target_to_hostname(target)
-
-    return new_list
+    return (
+        target_to_ipv4(target)
+        or target_to_ipv6(target)
+        or target_to_ipv4_cidr(target)
+        or target_to_ipv6_cidr(target)
+        or target_to_ipv4_short(target)
+        or target_to_ipv4_long(target)
+        or target_to_ipv6_short(target)
+        or target_to_ipv6_long(target)
+        or target_to_hostname(target)
+    )
 
 
 def target_str_to_list(target_str: str) -> Optional[List]:
@@ -289,7 +263,7 @@ def target_str_to_list(target_str: str) -> Optional[List]:
     Return a list of hosts, None if supplied target_str is None or
     empty, or an empty list in case of malformed target.
     """
-    new_list = list()
+    new_list = []
 
     if not target_str:
         return None
@@ -298,9 +272,7 @@ def target_str_to_list(target_str: str) -> Optional[List]:
 
     for target in target_str.split(','):
         target = target.strip()
-        target_list = target_to_list(target)
-
-        if target_list:
+        if target_list := target_to_list(target):
             new_list.extend(target_list)
         else:
             logger.info("%s: Invalid target value", target)
@@ -347,10 +319,7 @@ def get_hostname_by_address(address: str) -> str:
     except (socket.gaierror, socket.herror):
         return ''
 
-    if hostname == address:
-        return ''
-
-    return hostname
+    return '' if hostname == address else hostname
 
 
 def port_range_expand(portrange: str) -> Optional[List]:
@@ -373,15 +342,12 @@ def port_range_expand(portrange: str) -> Optional[List]:
         logger.info("Invalid port range format %s", e)
         return None
 
-    port_list = list()
-
-    for single_port in range(
-        port_range_min,
-        port_range_max,
-    ):
-        port_list.append(single_port)
-
-    return port_list
+    return list(
+        range(
+            port_range_min,
+            port_range_max,
+        )
+    )
 
 
 def port_str_arrange(ports: str) -> str:
@@ -447,8 +413,8 @@ def ports_as_list(port_str: str) -> Tuple[Optional[List], Optional[List]]:
         logger.info("{0}: Port list malformed.")
         return [None, None]
 
-    tcp_list = list()
-    udp_list = list()
+    tcp_list = []
+    udp_list = []
 
     ports = port_str.replace(' ', '')
     ports = ports.replace('\n', '')
@@ -474,11 +440,9 @@ def ports_as_list(port_str: str) -> Tuple[Optional[List], Optional[List]]:
     if b_udp != -1 and b_tcp != -1:
         tports = ports[ports.index('T:') + 2 : ports.index('U:')]
         uports = ports[ports.index('U:') + 2 :]
-    # Only UDP ports
     elif b_tcp == -1 and b_udp != -1:
         uports = ports[ports.index('U:') + 2 :]
-    # Only TCP ports
-    elif b_udp == -1 and b_tcp != -1:
+    elif b_tcp != -1:
         tports = ports[ports.index('T:') + 2 :]
     else:
         tports = ports
@@ -502,10 +466,7 @@ def ports_as_list(port_str: str) -> Tuple[Optional[List], Optional[List]]:
                 udp_list.append(int(port))
         udp_list.sort()
 
-    if len(tcp_list) == 0 and len(udp_list) == 0:
-        return [None, None]
-
-    return (tcp_list, udp_list)
+    return [None, None] if not tcp_list and not udp_list else (tcp_list, udp_list)
 
 
 def get_tcp_port_list(port_str: str) -> Optional[List]:
@@ -536,7 +497,7 @@ def port_list_compress(port_list: List) -> str:
         if group[0][1] == group[-1][1]:
             compressed_list.append(str(group[0][1]))
         else:
-            compressed_list.append(str(group[0][1]) + '-' + str(group[-1][1]))
+            compressed_list.append(f'{str(group[0][1])}-{str(group[-1][1])}')
 
     return ','.join(compressed_list)
 

@@ -34,14 +34,13 @@ class CacheFake(Cache):
         self.db[oid] = value
 
     def exists(self, oid: str) -> bool:
-        return True if self.db.get(oid, None) else False
+        return bool(self.db.get(oid, None))
 
     def get_advisory(self, oid: str) -> Optional[Dict[str, str]]:
         return self.db.get(oid, None)
 
     def get_keys(self) -> Iterator[str]:
-        for key in self.db.keys():
-            yield key
+        yield from self.db.keys()
 
 
 class NotusTestCase(TestCase):
@@ -51,7 +50,7 @@ class NotusTestCase(TestCase):
         redis_mock.scan_iter.return_value = ["internal/notus/advisories/12"]
         redis_mock.lindex.return_value = '{"file_name": "/tmp/something" }'
         notus = Notus(path_mock, Cache(redis_mock), lambda _: True)
-        oids = [x for x in notus.get_filenames_and_oids()]
+        oids = list(notus.get_filenames_and_oids())
         self.assertEqual(len(oids), 1)
 
     def test_notus_reload(self):

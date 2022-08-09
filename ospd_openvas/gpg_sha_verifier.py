@@ -59,9 +59,7 @@ def reload_sha256sums(
         if not config.cache or config.fingerprint != fingerprint:
             config.fingerprint = fingerprint
             config.cache = gpg_sha256sums(config.hash_file, config.gpg)
-        if not config.cache:
-            return config.on_verification_failure(None)
-        return config.cache
+        return config.cache or config.on_verification_failure(None)
 
     return internal_reload
 
@@ -119,8 +117,6 @@ def create_verify(
         hash_sum = s256h.hexdigest()
 
         assumed_name = sha256sums().get(hash_sum)
-        if not assumed_name:
-            return False
-        return assumed_name == advisory_path.name
+        return assumed_name == advisory_path.name if assumed_name else False
 
     return verify

@@ -79,12 +79,11 @@ class NVTICache(BaseDB):
 
         Returns the feed version or None if the nvt feed isn't available.
         """
-        if not self.ctx:
-            # no nvti cache db available yet
-            return None
-
-        # no feed version for notus otherwise tha would be a contract change
-        return OpenvasDB.get_single_item(self.ctx, NVTI_CACHE_NAME)
+        return (
+            OpenvasDB.get_single_item(self.ctx, NVTI_CACHE_NAME)
+            if self.ctx
+            else None
+        )
 
     def get_oids(self) -> Iterator[Tuple[str, str]]:
         """Get the list of NVT file names and OIDs.
@@ -93,8 +92,7 @@ class NVTICache(BaseDB):
             An iterable of tuples of file name and oid.
         """
         if self.notus:
-            for f, oid in self.notus.get_filenames_and_oids():
-                yield (f, oid)
+            yield from self.notus.get_filenames_and_oids()
         if self.ctx:
             for f, oid in OpenvasDB.get_filenames_and_oids(self.ctx):
                 if not self.notus or not self.notus.exists(oid):
@@ -121,11 +119,12 @@ class NVTICache(BaseDB):
                 param_name = elem[1]
                 param_type = elem[2]
 
-                vt_params[param_id] = dict()
-                vt_params[param_id]['id'] = param_id
-                vt_params[param_id]['type'] = param_type
-                vt_params[param_id]['name'] = param_name.strip()
-                vt_params[param_id]['description'] = 'Description'
+                vt_params[param_id] = {
+                    'id': param_id,
+                    'type': param_type,
+                    'name': param_name.strip(),
+                    'description': 'Description',
+                }
 
                 if len(elem) > 3:
                     param_default = elem[3]
@@ -146,7 +145,7 @@ class NVTICache(BaseDB):
         Returns:
             A dictionary with the tags.
         """
-        tags_dict = dict()
+        tags_dict = {}
         tags = tags_str.split('|')
         for tag in tags:
             try:
@@ -194,17 +193,16 @@ class NVTICache(BaseDB):
             'name',
         ]
 
-        custom = dict()
-        custom['refs'] = dict()
+        custom = {'refs': {}}
         for child, res in zip(subelem, resp):
             if child not in ['cve', 'bid', 'xref', 'tag'] and res:
                 custom[child] = res
             elif child == 'tag':
-                custom.update(self._parse_metadata_tags(res, oid))
+                custom |= self._parse_metadata_tags(res, oid)
             elif child in ['cve', 'bid', 'xref'] and res:
                 custom['refs'][child] = res.split(", ")
 
-        custom['vt_params'] = dict()
+        custom['vt_params'] = {}
         custom['vt_params'].update(self.get_nvt_params(oid))
 
         return custom
@@ -230,11 +228,7 @@ class NVTICache(BaseDB):
 
         subelem = ['cve', 'bid', 'xref']
 
-        refs = dict()
-        for child, res in zip(subelem, resp):
-            refs[child] = res.split(", ")
-
-        return refs
+        return {child: res.split(", ") for child, res in zip(subelem, resp)}
 
     def get_nvt_family(self, oid: str) -> Optional[str]:
         """Get NVT family
@@ -319,18 +313,14 @@ class NVTICache(BaseDB):
         Returns:
             The checksum
         """
-        # Try to get first sha256 checksum
-        sha256sum = OpenvasDB.get_single_item(
+        if sha256sum := OpenvasDB.get_single_item(
             self.ctx,
             f'sha256sums:{file_abs_path}',
-        )
-        if sha256sum:
+        ):
             return sha256sum
 
-        # Search for md5 checksum
-        md5sum = OpenvasDB.get_single_item(
+        if md5sum := OpenvasDB.get_single_item(
             self.ctx,
             f'md5sums:{file_abs_path}',
-        )
-        if md5sum:
+        ):
             return md5sum

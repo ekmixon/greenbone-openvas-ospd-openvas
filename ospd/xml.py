@@ -61,14 +61,10 @@ def escape_ctrl_chars(result_text):
     """Replace non printable chars in result_text with an hexa code
     in string format.
     """
-    escaped_str = ''
-    for fragment in split_invalid_xml(result_text):
-        if isinstance(fragment, int):
-            escaped_str += f'\\x{fragment:00004X}'
-        else:
-            escaped_str += fragment
-
-    return escaped_str
+    return ''.join(
+        f'\\x{fragment:00004X}' if isinstance(fragment, int) else fragment
+        for fragment in split_invalid_xml(result_text)
+    )
 
 
 def get_result_xml(result):
@@ -225,11 +221,7 @@ class XmlStringHelper:
         Return:
             Encoded string representing a part of an xml element.
         """
-        if end:
-            ret = f"</{elem_name}>"
-        else:
-            ret = f"<{elem_name}>"
-
+        ret = f"</{elem_name}>" if end else f"<{elem_name}>"
         return ret.encode('utf-8')
 
     def create_response(self, command: str, end: bool = False) -> bytes:
@@ -280,11 +272,10 @@ class XmlStringHelper:
                     xml_str = xml_str + tostring(elem, encoding='utf-8')
             elif isinstance(content, Element):
                 xml_str = xml_str + tostring(content, encoding='utf-8')
+            elif end:
+                xml_str = xml_str + self.create_element(content, False)
             else:
-                if end:
-                    xml_str = xml_str + self.create_element(content, False)
-                else:
-                    xml_str = xml_str + self.create_element(content)
+                xml_str = xml_str + self.create_element(content)
 
         return xml_str
 

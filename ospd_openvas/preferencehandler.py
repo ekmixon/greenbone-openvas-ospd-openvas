@@ -78,10 +78,13 @@ def alive_test_methods_to_bit_field(
         AliveTest.ALIVE_TEST_CONSIDER_ALIVE if consider_alive else 0
     )
 
-    bit_field = (
-        icmp_enum | tcp_syn_enum | tcp_ack_enum | arp_enum | consider_alive_enum
+    return (
+        icmp_enum
+        | tcp_syn_enum
+        | tcp_ack_enum
+        | arp_enum
+        | consider_alive_enum
     )
-    return bit_field
 
 
 def _from_bool_to_str(value: int) -> str:
@@ -109,7 +112,7 @@ class PreferenceHandler:
         self.nvti = nvticache
         if is_handled_by_notus:
             self.is_handled_by_notus = is_handled_by_notus
-        elif not is_handled_by_notus and nvticache and nvticache.notus:
+        elif nvticache and nvticache.notus:
             self.is_handled_by_notus = nvticache.notus.exists
         else:
             self.is_handled_by_notus = lambda _: False
@@ -151,15 +154,15 @@ class PreferenceHandler:
 
         Returns a list of vt oids which match with the given filter.
         """
-        vts_list = list()
-        families = dict()
+        vts_list = []
+        families = {}
 
         oids = self.nvti.get_oids()
 
         for _, oid in oids:
             family = self.nvti.get_nvt_family(oid)
             if family not in families:
-                families[family] = list()
+                families[family] = []
 
             families[family].append(oid)
 
@@ -191,16 +194,11 @@ class PreferenceHandler:
         """Check if the value of a vt parameter matches with
         the type founded.
         """
-        if param_type in [
-            'entry',
-            'password',
-            'radio',
-            'sshlogin',
-        ] and isinstance(vt_param_value, str):
-            return None
-        elif param_type == 'checkbox' and (
-            vt_param_value == '0' or vt_param_value == '1'
+        if param_type in {'entry', 'password', 'radio', 'sshlogin'} and isinstance(
+            vt_param_value, str
         ):
+            return None
+        elif param_type == 'checkbox' and vt_param_value in {'0', '1'}:
             return None
         elif param_type == 'file':
             try:
@@ -222,24 +220,19 @@ class PreferenceHandler:
         vts: Dict[str, Dict[str, str]],
     ) -> Tuple[List[str], Dict[str, str]]:
         """Add single VTs and their parameters."""
-        vts_list = []
         vts_params = {}
         vtgroups = vts.pop('vt_groups')
 
         vthelper = VtHelper(self.nvti)
 
-        if vtgroups:
-            vts_list = self._get_vts_in_groups(vtgroups)
-
+        vts_list = self._get_vts_in_groups(vtgroups) if vtgroups else []
         counter = 0
         for vtid, vt_params in vts.items():
             counter += 1
-            if counter % 500 == 0:
-                if (
-                    self.scan_collection.get_status(self.scan_id)
-                    == ScanStatus.STOPPED
-                ):
-                    break
+            if counter % 500 == 0 and (
+                self.scan_collection.get_status(self.scan_id) == ScanStatus.STOPPED
+            ):
+                break
 
             # remove oids handled by notus
             if self.is_handled_by_notus(vtid):
@@ -269,11 +262,7 @@ class PreferenceHandler:
                     )
                     continue
 
-                if vt_param_id == '0':
-                    type_aux = 'integer'
-                else:
-                    type_aux = param_type
-
+                type_aux = 'integer' if vt_param_id == '0' else param_type
                 if self.check_param_type(vt_param_value, type_aux):
                     logger.debug(
                         'The VT parameter %s for %s could not be set. '
@@ -298,9 +287,7 @@ class PreferenceHandler:
         """Get the plugin list and it preferences from the Scan Collection.
         The plugin list is immediately stored in the kb.
         """
-        nvts = self.scan_collection.get_vts(self.scan_id)
-
-        if nvts:
+        if nvts := self.scan_collection.get_vts(self.scan_id):
             nvts_list, self._nvts_params = self._process_vts(nvts)
             # Add nvts list
             separ = ';'
@@ -319,12 +306,10 @@ class PreferenceHandler:
         for key, val in self._nvts_params.items():
             items_list.append(f'{key}|||{val}')
             counter += 1
-            if counter % 500 == 0:
-                if (
-                    self.scan_collection.get_status(self.scan_id)
-                    == ScanStatus.STOPPED
-                ):
-                    break
+            if counter % 500 == 0 and (
+                self.scan_collection.get_status(self.scan_id) == ScanStatus.STOPPED
+            ):
+                break
 
         if items_list:
             self.kbdb.add_scan_preferences(self.scan_id, items_list)
@@ -407,24 +392,15 @@ class PreferenceHandler:
                 f'{OID_PING_HOST}:7:checkbox:TCP ping tries only TCP-SYN ping'
             ] = value
 
-            if alive_test & AliveTest.ALIVE_TEST_ICMP:
-                value = "yes"
-            else:
-                value = "no"
+            value = "yes" if alive_test & AliveTest.ALIVE_TEST_ICMP else "no"
             target_opt_prefs_list[
                 f'{OID_PING_HOST}:3:checkbox:Do an ICMP ping'
             ] = value
 
-            if alive_test & AliveTest.ALIVE_TEST_ARP:
-                value = "yes"
-            else:
-                value = "no"
+            value = "yes" if alive_test & AliveTest.ALIVE_TEST_ARP else "no"
             target_opt_prefs_list[f'{OID_PING_HOST}:4:checkbox:Use ARP'] = value
 
-            if alive_test & AliveTest.ALIVE_TEST_CONSIDER_ALIVE:
-                value = "no"
-            else:
-                value = "yes"
+            value = "no" if alive_test & AliveTest.ALIVE_TEST_CONSIDER_ALIVE else "yes"
             target_opt_prefs_list[
                 f'{OID_PING_HOST}:5:checkbox:Mark unrechable Hosts '
                 'as dead (not scanning)'
@@ -452,13 +428,12 @@ class PreferenceHandler:
         alive_test_ports = None
         target_options = self.target_options
 
-        if settings:
-            boreas = settings.get(BOREAS_SETTING_NAME)
-            if not boreas:
-                return
-        else:
+        if not settings:
             return
 
+        boreas = settings.get(BOREAS_SETTING_NAME)
+        if not boreas:
+            return
         if target_options:
             alive_test_ports = target_options.get('alive_test_ports')
             # Alive test was specified as bit field.
@@ -509,13 +484,11 @@ class PreferenceHandler:
     def prepare_reverse_lookup_opt_for_openvas(self):
         """Set reverse lookup options in the kb"""
         if self.target_options:
-            items = []
             _rev_lookup_only = int(
                 self.target_options.get('reverse_lookup_only', '0')
             )
             rev_lookup_only = _from_bool_to_str(_rev_lookup_only)
-            items.append(f'reverse_lookup_only|||{rev_lookup_only}')
-
+            items = [f'reverse_lookup_only|||{rev_lookup_only}']
             _rev_lookup_unify = int(
                 self.target_options.get('reverse_lookup_unify', '0')
             )
@@ -547,10 +520,8 @@ class PreferenceHandler:
     def prepare_host_options_for_openvas(self):
         """Get the excluded and finished hosts from the scan collection and
         stores the list of hosts that must not be scanned in the kb."""
-        exclude_hosts = self.scan_collection.get_exclude_hosts(self.scan_id)
-
-        if exclude_hosts:
-            pref_val = "exclude_hosts|||" + exclude_hosts
+        if exclude_hosts := self.scan_collection.get_exclude_hosts(self.scan_id):
+            pref_val = f"exclude_hosts|||{exclude_hosts}"
             self.kbdb.add_scan_preferences(self.scan_id, [pref_val])
 
     def prepare_scan_params_for_openvas(self, ospd_params: Dict[str, Dict]):
@@ -567,19 +538,15 @@ class PreferenceHandler:
             item_type = ''
             if key in ospd_params:
                 item_type = ospd_params[key].get('type')
-            else:
-                if key not in BASE_SCANNER_PARAMS:
-                    logger.debug(
-                        "%s is a scanner only setting and should not be set "
-                        "by the client. Setting needs to be included in "
-                        "OpenVAS configuration file instead.",
-                        key,
-                    )
-            if item_type == 'boolean':
-                val = _from_bool_to_str(value)
-            else:
-                val = str(value)
-            prefs_val.append(key + "|||" + val)
+            elif key not in BASE_SCANNER_PARAMS:
+                logger.debug(
+                    "%s is a scanner only setting and should not be set "
+                    "by the client. Setting needs to be included in "
+                    "OpenVAS configuration file instead.",
+                    key,
+                )
+            val = _from_bool_to_str(value) if item_type == 'boolean' else str(value)
+            prefs_val.append(f"{key}|||{val}")
 
         if prefs_val:
             self.kbdb.add_scan_preferences(self.scan_id, prefs_val)
@@ -632,14 +599,15 @@ class PreferenceHandler:
                     )
                 elif cred_type == 'usk':
                     private = cred_params.get('private', '')
-                    cred_prefs_list.append(
-                        f'{OID_SSH_AUTH}:2:password:SSH key passphrase:|||'
-                        f'{password}'
+                    cred_prefs_list.extend(
+                        (
+                            f'{OID_SSH_AUTH}:2:password:SSH key passphrase:|||'
+                            f'{password}',
+                            f'{OID_SSH_AUTH}:4:file:SSH private key:|||'
+                            f'{private}',
+                        )
                     )
-                    cred_prefs_list.append(
-                        f'{OID_SSH_AUTH}:4:file:SSH private key:|||'
-                        f'{private}'
-                    )
+
                 elif cred_type:
                     self.errors.append(
                         f"Unknown Credential Type for SSH: {cred_type}. "
@@ -653,36 +621,34 @@ class PreferenceHandler:
                         "Username + Password or 'usk' for Username + SSH Key."
                     )
                     continue
-                cred_prefs_list.append(f'auth_port_ssh|||{port}')
-                cred_prefs_list.append(
-                    f'{OID_SSH_AUTH}:1:entry:SSH login name:|||{username}'
+                cred_prefs_list.extend(
+                    (
+                        f'auth_port_ssh|||{port}',
+                        f'{OID_SSH_AUTH}:1:entry:SSH login name:|||{username}',
+                        f'{OID_SSH_AUTH}:7:entry:SSH privilege login name:'
+                        f'|||{priv_username}',
+                        f'{OID_SSH_AUTH}:8:password:SSH privilege password:'
+                        f'|||{priv_password}',
+                    )
                 )
-                cred_prefs_list.append(
-                    f'{OID_SSH_AUTH}:7:entry:SSH privilege login name:'
-                    f'|||{priv_username}'
-                )
-                cred_prefs_list.append(
-                    f'{OID_SSH_AUTH}:8:password:SSH privilege password:'
-                    f'|||{priv_password}'
-                )
-            # Check servic smb
+
             elif service == 'smb':
-                cred_prefs_list.append(
-                    f'{OID_SMB_AUTH}:1:entry:SMB login:|||{username}'
+                cred_prefs_list.extend(
+                    (
+                        f'{OID_SMB_AUTH}:1:entry:SMB login:|||{username}',
+                        f'{OID_SMB_AUTH}:2:password:SMB password:|||{password}',
+                    )
                 )
-                cred_prefs_list.append(
-                    f'{OID_SMB_AUTH}:2:password:SMB password:|||{password}'
-                )
-            # Check service esxi
+
             elif service == 'esxi':
-                cred_prefs_list.append(
-                    f'{OID_ESXI_AUTH}:1:entry:ESXi login name:|||{username}'
+                cred_prefs_list.extend(
+                    (
+                        f'{OID_ESXI_AUTH}:1:entry:ESXi login name:|||{username}',
+                        f'{OID_ESXI_AUTH}:2:password:ESXi login password:|||'
+                        f'{password}',
+                    )
                 )
-                cred_prefs_list.append(
-                    f'{OID_ESXI_AUTH}:2:password:ESXi login password:|||'
-                    f'{password}'
-                )
-            # Check service snmp
+
             elif service == 'snmp':
                 community = cred_params.get('community', '')
                 auth_algorithm = cred_params.get('auth_algorithm', '')
@@ -696,10 +662,7 @@ class PreferenceHandler:
                             + " password also has to be empty."
                         )
                         continue
-                elif (
-                    not privacy_algorithm == "aes"
-                    and not privacy_algorithm == "des"
-                ):
+                elif privacy_algorithm not in ["aes", "des"]:
                     self.errors.append(
                         "Unknown privacy algorithm used: "
                         + privacy_algorithm
@@ -713,9 +676,7 @@ class PreferenceHandler:
                         + " Use 'md5' or 'sha1'."
                     )
                     continue
-                elif (
-                    not auth_algorithm == "md5" and not auth_algorithm == "sha1"
-                ):
+                elif auth_algorithm not in ["md5", "sha1"]:
                     self.errors.append(
                         "Unknown authentication algorithm: "
                         + auth_algorithm
@@ -723,27 +684,20 @@ class PreferenceHandler:
                     )
                     continue
 
-                cred_prefs_list.append(
-                    f'{OID_SNMP_AUTH}:1:password:SNMP Community:|||{community}'
+                cred_prefs_list.extend(
+                    (
+                        f'{OID_SNMP_AUTH}:1:password:SNMP Community:|||{community}',
+                        f'{OID_SNMP_AUTH}:2:entry:SNMPv3 Username:|||{username}',
+                        f'{OID_SNMP_AUTH}:3:password:SNMPv3 Password:|||{password}',
+                        f'{OID_SNMP_AUTH}:4:radio:SNMPv3 Authentication Algorithm:'
+                        f'|||{auth_algorithm}',
+                        f'{OID_SNMP_AUTH}:5:password:SNMPv3 Privacy Password:|||'
+                        f'{privacy_password}',
+                        f'{OID_SNMP_AUTH}:6:radio:SNMPv3 Privacy Algorithm:|||'
+                        f'{privacy_algorithm}',
+                    )
                 )
-                cred_prefs_list.append(
-                    f'{OID_SNMP_AUTH}:2:entry:SNMPv3 Username:|||{username}'
-                )
-                cred_prefs_list.append(
-                    f'{OID_SNMP_AUTH}:3:password:SNMPv3 Password:|||{password}'
-                )
-                cred_prefs_list.append(
-                    f'{OID_SNMP_AUTH}:4:radio:SNMPv3 Authentication Algorithm:'
-                    f'|||{auth_algorithm}'
-                )
-                cred_prefs_list.append(
-                    f'{OID_SNMP_AUTH}:5:password:SNMPv3 Privacy Password:|||'
-                    f'{privacy_password}'
-                )
-                cred_prefs_list.append(
-                    f'{OID_SNMP_AUTH}:6:radio:SNMPv3 Privacy Algorithm:|||'
-                    f'{privacy_algorithm}'
-                )
+
             elif service:
                 self.errors.append(
                     f"Unknown service type for credential: {service}"
@@ -767,10 +721,7 @@ class PreferenceHandler:
                 logger.debug("Credentials added to the kb.")
         else:
             logger.debug("No credentials found.")
-        if credentials and not cred_prefs:
-            return False
-
-        return True
+        return bool(not credentials or cred_prefs)
 
     def prepare_main_kbindex_for_openvas(self):
         """Store main_kbindex as global preference in the

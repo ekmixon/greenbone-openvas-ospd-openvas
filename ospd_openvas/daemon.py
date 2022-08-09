@@ -21,6 +21,7 @@
 
 """ Setup for the OSP OpenVAS Server. """
 
+
 import logging
 import time
 import copy
@@ -62,8 +63,7 @@ from ospd_openvas.gpg_sha_verifier import (
     reload_sha256sums,
 )
 
-SENTRY_DSN_OSPD_OPENVAS = environ.get("SENTRY_DSN_OSPD_OPENVAS")
-if SENTRY_DSN_OSPD_OPENVAS:
+if SENTRY_DSN_OSPD_OPENVAS := environ.get("SENTRY_DSN_OSPD_OPENVAS"):
     # pylint: disable=import-error
     import sentry_sdk
 
@@ -479,9 +479,8 @@ class OSPDopenvas(OSPDaemon):
         """Initializes the ospd-openvas daemon's internal data."""
 
         self.main_db = MainDB()
-        notus_dir = kwargs.get('notus_feed_dir')
         notus = None
-        if notus_dir:
+        if notus_dir := kwargs.get('notus_feed_dir'):
             ndir = Path(notus_dir)
             verifier = hashsum_verificator(
                 ndir, disable_notus_hashsum_verification
@@ -517,7 +516,7 @@ class OSPDopenvas(OSPDaemon):
         self._sudo_available = None
         self._is_running_as_root = None
 
-        self.scan_only_params = dict()
+        self.scan_only_params = {}
 
         self._mqtt_broker_address = mqtt_broker_address
         self._mqtt_broker_port = mqtt_broker_port
@@ -597,8 +596,7 @@ class OSPDopenvas(OSPDaemon):
             )
 
         feed_date = None
-        feed_info = self.get_feed_info()
-        if feed_info:
+        if feed_info := self.get_feed_info():
             feed_date = safe_int(feed_info.get("PLUGIN_SET"))
 
         logger.debug("Current feed version: %s", current_feed)
@@ -632,8 +630,7 @@ class OSPDopenvas(OSPDaemon):
                 key = key.strip()
                 value = value.strip()
                 value = value.replace(';', '')
-                value = value.replace('"', '')
-                if value:
+                if value := value.replace('"', ''):
                     feed_info[key] = value
 
         return feed_info
@@ -654,21 +651,15 @@ class OSPDopenvas(OSPDaemon):
         """Perform a feed sync self tests and check if the feed lock file is
         locked.
         """
-        feed_status = dict()
+        feed_status = {}
 
         # It is locked by the current process
         if self.feed_lock.has_lock():
             feed_status["lockfile_in_use"] = '1'
-        # Check if we can get the lock
         else:
             with self.feed_lock as fl:
                 # It is available
-                if fl.has_lock():
-                    feed_status["lockfile_in_use"] = '0'
-                # Locked by another process
-                else:
-                    feed_status["lockfile_in_use"] = '1'
-
+                feed_status["lockfile_in_use"] = '0' if fl.has_lock() else '1'
         feed = Feed()
         _exit_error, _error_msg = feed.perform_feed_sync_self_test_success()
         feed_status["self_test_exit_error"] = str(_exit_error)
@@ -789,8 +780,8 @@ class OSPDopenvas(OSPDaemon):
             scan_id: Scan ID to identify the current scan.
         """
         all_status = kbdb.get_scan_status()
-        all_hosts = dict()
-        finished_hosts = list()
+        all_hosts = {}
+        finished_hosts = []
         for res in all_status:
             try:
                 current_host, launched, total = res.split('/')
@@ -809,10 +800,7 @@ class OSPDopenvas(OSPDaemon):
 
             all_hosts[current_host] = host_prog
 
-            if (
-                host_prog == ScanProgress.DEAD_HOST
-                or host_prog == ScanProgress.FINISHED
-            ):
+            if host_prog in [ScanProgress.DEAD_HOST, ScanProgress.FINISHED]:
                 finished_hosts.append(current_host)
 
             logger.debug(
@@ -880,10 +868,7 @@ class OSPDopenvas(OSPDaemon):
                 "Host dead" in res["value"] or res["result_type"] == "DEADHOST"
             )
             host_deny = "Host access denied" in res["value"]
-            start_end_msg = (
-                res["result_type"] == "HOST_START"
-                or res["result_type"] == "HOST_END"
-            )
+            start_end_msg = res["result_type"] in ["HOST_START", "HOST_END"]
             host_count = res["result_type"] == "HOSTS_COUNT"
             vt_aux = None
 
@@ -921,10 +906,7 @@ class OSPDopenvas(OSPDaemon):
                     uri=ruri,
                 )
 
-            elif (
-                res["result_type"] == 'HOST_START'
-                or res["result_type"] == 'HOST_END'
-            ):
+            elif res["result_type"] in ['HOST_START', 'HOST_END']:
                 res_list.add_scan_log_to_list(
                     host=current_host,
                     name=res["result_type"],
@@ -966,8 +948,6 @@ class OSPDopenvas(OSPDaemon):
                     uri=ruri,
                 )
 
-            # To process non-scanned dead hosts when
-            # test_alive_host_only in openvas is enable
             elif res["result_type"] == 'DEADHOST':
                 try:
                     total_dead = total_dead + int(res["value"])
@@ -1033,51 +1013,52 @@ class OSPDopenvas(OSPDaemon):
         via an invocation of openvas with the --scan-stop option to
         stop it."""
 
-        if kbdb:
-            # Set stop flag in redis
-            kbdb.stop_scan(scan_id)
+        if not kbdb:
+            return
+        # Set stop flag in redis
+        kbdb.stop_scan(scan_id)
 
-            # Check if openvas is running
-            if ovas_process.is_running():
-                # Cleaning in case of Zombie Process
-                if ovas_process.status() == psutil.STATUS_ZOMBIE:
-                    logger.debug(
-                        '%s: Process with PID %s is a Zombie process.'
-                        ' Cleaning up...',
-                        scan_id,
-                        ovas_process.pid,
-                    )
-                    ovas_process.wait()
-                # Stop openvas process and wait until it stopped
-                else:
-                    can_stop_scan = Openvas.stop_scan(
-                        scan_id,
-                        not self.is_running_as_root and self.sudo_available,
-                    )
-                    if not can_stop_scan:
-                        logger.debug(
-                            'Not possible to stop scan process: %s.',
-                            ovas_process,
-                        )
-                        return
-
-                    logger.debug('Stopping process: %s', ovas_process)
-
-                    while ovas_process.is_running():
-                        if ovas_process.status() == psutil.STATUS_ZOMBIE:
-                            ovas_process.wait()
-                        else:
-                            time.sleep(0.1)
-            else:
+        # Check if openvas is running
+        if ovas_process.is_running():
+            # Cleaning in case of Zombie Process
+            if ovas_process.status() == psutil.STATUS_ZOMBIE:
                 logger.debug(
-                    "%s: Process with PID %s already stopped",
+                    '%s: Process with PID %s is a Zombie process.'
+                    ' Cleaning up...',
                     scan_id,
                     ovas_process.pid,
                 )
+                ovas_process.wait()
+            # Stop openvas process and wait until it stopped
+            else:
+                can_stop_scan = Openvas.stop_scan(
+                    scan_id,
+                    not self.is_running_as_root and self.sudo_available,
+                )
+                if not can_stop_scan:
+                    logger.debug(
+                        'Not possible to stop scan process: %s.',
+                        ovas_process,
+                    )
+                    return
 
-            # Clean redis db
-            for scan_db in kbdb.get_scan_databases():
-                self.main_db.release_database(scan_db)
+                logger.debug('Stopping process: %s', ovas_process)
+
+                while ovas_process.is_running():
+                    if ovas_process.status() == psutil.STATUS_ZOMBIE:
+                        ovas_process.wait()
+                    else:
+                        time.sleep(0.1)
+        else:
+            logger.debug(
+                "%s: Process with PID %s already stopped",
+                scan_id,
+                ovas_process.pid,
+            )
+
+        # Clean redis db
+        for scan_db in kbdb.get_scan_databases():
+            self.main_db.release_database(scan_db)
 
     def exec_scan(self, scan_id: str):
         """Starts the OpenVAS scanner for scan_id scan."""
@@ -1116,7 +1097,7 @@ class OSPDopenvas(OSPDaemon):
             logger.error(error)
         errors = scan_prefs.get_error_messages()
         for e in errors:
-            error = 'Malformed credential. ' + e
+            error = f'Malformed credential. {e}'
             self.add_scan_error(
                 scan_id,
                 name='',
@@ -1198,9 +1179,9 @@ class OSPDopenvas(OSPDaemon):
                 self.stop_scan_cleanup(kbdb, scan_id, openvas_process)
 
                 # clean main_db, but wait for scanner to finish.
-                while not kbdb.target_is_finished(scan_id):
-                    if not self.is_openvas_process_alive(openvas_process):
-                        break
+                while not kbdb.target_is_finished(
+                    scan_id
+                ) and self.is_openvas_process_alive(openvas_process):
                     logger.debug('%s: Waiting for openvas to finish', scan_id)
                     time.sleep(1)
                 self.main_db.release_database(kbdb)

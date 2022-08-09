@@ -180,8 +180,7 @@ class GetVersion(BaseCommand):
 
         content = [protocol, daemon, scanner]
 
-        vts_version = self._daemon.get_vts_version()
-        if vts_version:
+        if vts_version := self._daemon.get_vts_version():
             vts = Element('vts')
             elem = SubElement(vts, 'version')
             elem.text = vts_version
@@ -289,7 +288,7 @@ class GetScannerDetails(BaseCommand):
         @return: Response string for <get_scanner_details> command.
         """
         list_all = xml.get('list_all')
-        list_all = True if list_all == '1' else False
+        list_all = list_all == '1'
 
         desc_xml = Element('description')
         desc_xml.text = self._daemon.get_scanner_description()
@@ -368,7 +367,7 @@ class GetVts(BaseCommand):
         _details = xml.get('details')
         version_only = xml.get('version_only')
 
-        vt_details = False if _details == '0' else True
+        vt_details = _details != '0'
 
         if self._daemon.vts and vt_id and vt_id not in self._daemon.vts:
             self._daemon.vts.is_cache_available = True
@@ -524,7 +523,7 @@ class StartScan(BaseCommand):
         elements = {}
 
         if self.elements:
-            elements.update(self.elements)
+            elements |= self.elements
 
         scanner_params = elements.get('scanner_params', {}).copy()
         elements['scanner_params'] = scanner_params
@@ -655,10 +654,7 @@ class GetMemoryUsage(BaseCommand):
         if unit == 'kb':
             return str(Decimal(value) / 1024)
 
-        if unit == 'mb':
-            return str(Decimal(value) / (1024 * 1024))
-
-        return str(value)
+        return str(Decimal(value) / (1024 * 1024)) if unit == 'mb' else str(value)
 
     @staticmethod
     def _create_process_element(name: str, pid: int):

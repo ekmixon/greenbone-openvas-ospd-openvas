@@ -55,7 +55,7 @@ class VtsFilter:
         """
 
         filter_list = vt_filter.split(';')
-        filters = list()
+        filters = []
 
         for single_filter in filter_list:
             filter_aux = re.split(r'(\W)', single_filter, 1)

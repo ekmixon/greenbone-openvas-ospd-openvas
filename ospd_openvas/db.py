@@ -80,7 +80,7 @@ class OpenvasDB:
                 cls._db_address = cls._db_address.replace("tcp://", "redis://")
                 # translate non scheme to unix://
                 if not parse.urlparse(cls._db_address).scheme:
-                    cls._db_address = "unix://" + cls._db_address
+                    cls._db_address = f"unix://{cls._db_address}"
                 if cls._db_address.startswith("redis://"):
                     logger.warning(
                         "A Redis TCP connection is being used. "
@@ -118,7 +118,7 @@ class OpenvasDB:
                 logger.debug(
                     'Redis connection lost: %s. Trying again in 5 seconds.', err
                 )
-                tries = tries - 1
+                tries -= 1
                 time.sleep(5)
                 continue
             break
@@ -138,7 +138,7 @@ class OpenvasDB:
         Returns the redis context for the db and its index as a tuple or
         None, None if the db with the pattern couldn't be found.
         """
-        for i in range(0, max_database_index):
+        for i in range(max_database_index):
             ctx = cls.create_context(i)
             if ctx.keys(pattern):
                 return (ctx, i)
@@ -158,7 +158,7 @@ class OpenvasDB:
         if not kbindex:
             raise RequiredArgument('select_database', 'kbindex')
 
-        ctx.execute_command('SELECT ' + str(kbindex))
+        ctx.execute_command(f'SELECT {kbindex}')
 
     @staticmethod
     def get_list_item(
@@ -355,15 +355,13 @@ class OpenvasDB:
 
         items = ctx.keys(pattern)
 
-        elem_list = []
-        for item in items:
-            elem_list.append(
-                [
-                    item,
-                    ctx.lrange(item, start=LIST_FIRST_POS, end=LIST_LAST_POS),
-                ]
-            )
-        return elem_list
+        return [
+            [
+                item,
+                ctx.lrange(item, start=LIST_FIRST_POS, end=LIST_LAST_POS),
+            ]
+            for item in items
+        ]
 
     @classmethod
     def get_keys_by_pattern(cls, ctx: RedisCtx, pattern: str) -> List[str]:
@@ -407,11 +405,7 @@ class OpenvasDB:
 
 class BaseDB:
     def __init__(self, kbindex: int, ctx: Optional[RedisCtx] = None):
-        if ctx is None:
-            self.ctx = OpenvasDB.create_context(kbindex)
-        else:
-            self.ctx = ctx
-
+        self.ctx = OpenvasDB.create_context(kbindex) if ctx is None else ctx
         self.index = kbindex
 
     def flush(self):

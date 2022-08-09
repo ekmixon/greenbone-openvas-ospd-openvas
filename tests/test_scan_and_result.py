@@ -623,7 +623,7 @@ class ScanTestCase(unittest.TestCase):
             scan = scans[0]
             status = scan.get('status')
 
-            if status == "init" or status == "running":
+            if status in ["init", "running"]:
                 self.assertEqual('0', scan.get('end_time'))
                 time.sleep(0.010)
             else:

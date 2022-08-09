@@ -43,9 +43,9 @@ class Message:
         group_id: Optional[str] = None,
         created: Optional[datetime] = None,
     ):
-        self.message_id = message_id if message_id else uuid4()
-        self.group_id = group_id if group_id else str(uuid4())
-        self.created = created if created else datetime.utcnow()
+        self.message_id = message_id or uuid4()
+        self.group_id = group_id or str(uuid4())
+        self.created = created or datetime.utcnow()
 
     @classmethod
     def _parse(cls, data: Dict[str, Union[int, str]]) -> Dict[str, Any]:

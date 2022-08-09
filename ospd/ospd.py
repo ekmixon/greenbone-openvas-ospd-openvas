@@ -127,7 +127,7 @@ class OSPDaemon:
         file_storage_dir='/run/ospd',
         max_queued_scans=0,
         **kwargs,
-    ):  # pylint: disable=unused-argument
+    ):    # pylint: disable=unused-argument
         """Initializes the daemon's internal data."""
 
         def remove_previous_data_pickler_files():
@@ -139,15 +139,15 @@ class OSPDaemon:
             return
 
         self.scan_collection = ScanCollection(file_storage_dir)
-        self.scan_processes = dict()
+        self.scan_processes = {}
         remove_previous_data_pickler_files()
 
-        self.daemon_info = dict()
+        self.daemon_info = {}
         self.daemon_info['name'] = "OSPd"
         self.daemon_info['version'] = __version__
         self.daemon_info['description'] = "No description"
 
-        self.scanner_info = dict()
+        self.scanner_info = {}
         self.scanner_info['name'] = 'No name'
         self.scanner_info['version'] = 'No version'
         self.scanner_info['description'] = 'No description'
@@ -171,7 +171,7 @@ class OSPDaemon:
             command = command_class(self)
             self.commands[command.get_name()] = command
 
-        self.scanner_params = dict()
+        self.scanner_params = {}
 
         for name, params in BASE_SCANNER_PARAMS.items():
             self.set_scanner_param(name, params)
@@ -182,10 +182,7 @@ class OSPDaemon:
         self.feed_vendor = None
         self.feed_home = None
 
-        if customvtfilter:
-            self.vts_filter = customvtfilter
-        else:
-            self.vts_filter = VtsFilter()
+        self.vts_filter = customvtfilter or VtsFilter()
 
     def init(self, server: BaseServer) -> None:
         """Should be overridden by a subclass if the initialization is costly.
@@ -355,10 +352,7 @@ class OSPDaemon:
 
     def preprocess_scan_params(self, xml_params):
         """Processes the scan parameters."""
-        params = {}
-
-        for param in xml_params:
-            params[param.tag] = param.text or ''
+        params = {param.tag: param.text or '' for param in xml_params}
 
         # Validate values.
         for key in list(params.keys()):
@@ -461,11 +455,11 @@ class OSPDaemon:
         # Stop scans which are not already stopped.
         for scan_id in self.scan_collection.ids_iterator():
             status = self.get_scan_status(scan_id)
-            if (
-                status != ScanStatus.STOPPED
-                and status != ScanStatus.FINISHED
-                and status != ScanStatus.INTERRUPTED
-            ):
+            if status not in [
+                ScanStatus.STOPPED,
+                ScanStatus.FINISHED,
+                ScanStatus.INTERRUPTED,
+            ]:
                 logger.debug("%s: Stopping scan before daemon exit.", scan_id)
                 self.stop_scan(scan_id)
 
@@ -474,11 +468,11 @@ class OSPDaemon:
             all_stopped = True
             for scan_id in self.scan_collection.ids_iterator():
                 status = self.get_scan_status(scan_id)
-                if (
-                    status != ScanStatus.STOPPED
-                    and status != ScanStatus.FINISHED
-                    and status != ScanStatus.INTERRUPTED
-                ):
+                if status not in [
+                    ScanStatus.STOPPED,
+                    ScanStatus.FINISHED,
+                    ScanStatus.INTERRUPTED,
+                ]:
                     all_stopped = False
 
             if all_stopped:
@@ -502,25 +496,19 @@ class OSPDaemon:
         """Returns type of a scanner parameter."""
         assert isinstance(param, str)
         entry = self.scanner_params.get(param)
-        if not entry:
-            return None
-        return entry.get('type')
+        return entry.get('type') if entry else None
 
     def get_scanner_param_mandatory(self, param: str):
         """Returns if a scanner parameter is mandatory."""
         assert isinstance(param, str)
         entry = self.scanner_params.get(param)
-        if not entry:
-            return False
-        return entry.get('mandatory')
+        return entry.get('mandatory') if entry else False
 
     def get_scanner_param_default(self, param: str):
         """Returns default value of a scanner parameter."""
         assert isinstance(param, str)
         entry = self.scanner_params.get(param)
-        if not entry:
-            return None
-        return entry.get('default')
+        return entry.get('default') if entry else None
 
     def handle_client_stream(self, stream: Stream) -> None:
         """Handles stream of data received from client."""
@@ -706,7 +694,7 @@ class OSPDaemon:
 
         if not isinstance(progress, int):
             try:
-                progress = int(progress)
+                progress = progress
             except (TypeError, ValueError):
                 return
 
@@ -817,11 +805,13 @@ class OSPDaemon:
 
     def _get_scan_progress_raw(self, scan_id: str) -> Dict:
         """Returns a dictionary with scan_id scan's progress information."""
-        current_progress = dict()
+        current_progress = {
+            'current_hosts': self.scan_collection.get_current_target_progress(
+                scan_id
+            )
+        }
 
-        current_progress[
-            'current_hosts'
-        ] = self.scan_collection.get_current_target_progress(scan_id)
+
         current_progress['overall'] = self.get_scan_progress(scan_id)
         current_progress['count_alive'] = self.scan_collection.get_count_alive(
             scan_id
@@ -1034,20 +1024,16 @@ class OSPDaemon:
         Returns:
             List of selected VT's OID.
         """
-        vts_xml = []
-
         # No match for the filter
         if filtered_vts is not None and len(filtered_vts) == 0:
-            return vts_xml
+            return []
 
         if filtered_vts:
-            vts_list = filtered_vts
+            return filtered_vts
         elif vt_id:
-            vts_list = [vt_id]
+            return [vt_id]
         else:
-            vts_list = self.vts.keys()
-
-        return vts_list
+            return self.vts.keys()
 
     def handle_command(self, data: bytes, stream: Stream) -> None:
         """Handles an osp command in a string."""
@@ -1140,24 +1126,25 @@ class OSPDaemon:
             )
             scan_is_queued = self.get_scan_status(scan_id) == ScanStatus.QUEUED
 
-            if scan_is_queued and scan_allowed:
-                try:
-                    self.scan_collection.unpickle_scan_info(scan_id)
-                except OspdCommandError as e:
-                    logger.error("Start scan error %s", e)
-                    self.stop_scan(scan_id)
-                    continue
-                scan_func = self.start_scan
-                scan_process = create_process(func=scan_func, args=(scan_id,))
-                self.scan_processes[scan_id] = scan_process
-                scan_process.start()
-                self.set_scan_status(scan_id, ScanStatus.INIT)
+            if scan_is_queued:
+                if scan_allowed:
+                    try:
+                        self.scan_collection.unpickle_scan_info(scan_id)
+                    except OspdCommandError as e:
+                        logger.error("Start scan error %s", e)
+                        self.stop_scan(scan_id)
+                        continue
+                    scan_func = self.start_scan
+                    scan_process = create_process(func=scan_func, args=(scan_id,))
+                    self.scan_processes[scan_id] = scan_process
+                    scan_process.start()
+                    self.set_scan_status(scan_id, ScanStatus.INIT)
 
-                current_queued_scans = current_queued_scans - 1
-                self.last_scan_start_time = time.time()
-                logger.info('Starting scan %s.', scan_id)
-            elif scan_is_queued and not scan_allowed:
-                return
+                    current_queued_scans = current_queued_scans - 1
+                    self.last_scan_start_time = time.time()
+                    logger.info('Starting scan %s.', scan_id)
+                else:
+                    return
 
     def is_new_scan_allowed(self) -> bool:
         """Check if max_scans has been reached.
@@ -1280,10 +1267,14 @@ class OSPDaemon:
             scan_status = self.get_scan_status(scan_id)
 
             if (
-                scan_status == ScanStatus.STOPPED
-                or scan_status == ScanStatus.FINISHED
-                or scan_status == ScanStatus.INTERRUPTED
-            ) and end_time:
+                scan_status
+                in [
+                    ScanStatus.STOPPED,
+                    ScanStatus.FINISHED,
+                    ScanStatus.INTERRUPTED,
+                ]
+                and end_time
+            ):
                 stored_time = int(time.time()) - end_time
                 if stored_time > self.scaninfo_store_time * 3600:
                     logger.debug(
@@ -1309,7 +1300,7 @@ class OSPDaemon:
             and scan_process
             and not scan_process.is_alive()
         ):
-            if not status == ScanStatus.STOPPED:
+            if status != ScanStatus.STOPPED:
                 self.add_scan_error(
                     scan_id, name="", host="", value="Scan process Failure"
                 )
@@ -1333,18 +1324,17 @@ class OSPDaemon:
 
     def get_count_queued_scans(self) -> int:
         """Get the amount of scans with queued status"""
-        count = 0
-        for scan_id in self.scan_collection.ids_iterator():
-            if self.get_scan_status(scan_id) == ScanStatus.QUEUED:
-                count += 1
-        return count
+        return sum(
+            self.get_scan_status(scan_id) == ScanStatus.QUEUED
+            for scan_id in self.scan_collection.ids_iterator()
+        )
 
     def get_count_running_scans(self) -> int:
         """Get the amount of scans with INIT/RUNNING status"""
         count = 0
         for scan_id in self.scan_collection.ids_iterator():
             status = self.get_scan_status(scan_id)
-            if status == ScanStatus.RUNNING or status == ScanStatus.INIT:
+            if status in [ScanStatus.RUNNING, ScanStatus.INIT]:
                 count += 1
         return count
 

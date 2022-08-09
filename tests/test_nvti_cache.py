@@ -80,7 +80,7 @@ class TestNVTICache(TestCase):
 
         resp = self.nvti.get_oids()
 
-        self.assertEqual([x for x in resp], [('filename', 'oid')])
+        self.assertEqual(list(resp), [('filename', 'oid')])
 
     def test_parse_metadata_tag_missing_value(self, MockOpenvasDB):
         logging.Logger.error = Mock()

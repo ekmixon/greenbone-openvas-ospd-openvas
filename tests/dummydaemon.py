@@ -29,7 +29,7 @@ class FakeDataManager:
         pass
 
     def dict(self):
-        return dict()
+        return {}
 
 
 class DummyDaemon(OSPDopenvas):
@@ -175,7 +175,6 @@ class DummyDaemon(OSPDopenvas):
         self.scan_collection.data_manager = FakeDataManager()
 
     def create_xml_target(self) -> et.Element:
-        target = et.fromstring(
+        return et.fromstring(
             "<target><hosts>192.168.0.1</hosts><ports>80,443</ports></target>"
         )
-        return target

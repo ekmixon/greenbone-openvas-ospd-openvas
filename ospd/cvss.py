@@ -143,7 +143,4 @@ class CVSS(object):
             _impact = 6.42 * isc_base
             _base_score = min(_impact + _exploitability, 10)
 
-        if _impact > 0:
-            return cls.roundup(_base_score)
-
-        return 0
+        return cls.roundup(_base_score) if _impact > 0 else 0

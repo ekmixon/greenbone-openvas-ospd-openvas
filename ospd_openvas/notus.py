@@ -43,8 +43,7 @@ class Cache:
         return self.db.exists(f"{self.__prefix}/{oid}") == 1
 
     def get_advisory(self, oid: str) -> Optional[Dict[str, str]]:
-        result = self.db.lindex(f"{self.__prefix}/{oid}", 0)
-        if result:
+        if result := self.db.lindex(f"{self.__prefix}/{oid}", 0):
             return json.loads(result)
         return None
 
@@ -97,38 +96,36 @@ class Notus:
     def __to_ospd(
         self, path: Path, advisory: Dict[str, Any], meta_data: Dict[str, Any]
     ):
-        result = {}
-        result["vt_params"] = []
-        result["creation_date"] = str(advisory.get("creation_date", 0))
-        result["last_modification"] = str(advisory.get("last_modification", 0))
-        result["modification_time"] = str(advisory.get("last_modification", 0))
-        result["summary"] = advisory.get("summary")
-        result["impact"] = advisory.get("impact")
-        result["affected"] = advisory.get("affected")
-        result["insight"] = advisory.get("insight")
-        result['solution'] = "Please install the updated package(s)."
-        result['solution_type'] = "VendorFix"
-        result['vuldetect'] = (
-            'Checks if a vulnerable package version is present on the target'
-            ' host.'
-        )
-        result['qod_type'] = meta_data.get('qod_type', 'package')
+        result = {
+            "vt_params": [],
+            "creation_date": str(advisory.get("creation_date", 0)),
+            "last_modification": str(advisory.get("last_modification", 0)),
+            "modification_time": str(advisory.get("last_modification", 0)),
+            "summary": advisory.get("summary"),
+            "impact": advisory.get("impact"),
+            "affected": advisory.get("affected"),
+            "insight": advisory.get("insight"),
+            'solution': "Please install the updated package(s).",
+            'solution_type': "VendorFix",
+            'vuldetect': 'Checks if a vulnerable package version is present on the target host.',
+            'qod_type': meta_data.get('qod_type', 'package'),
+        }
+
         severity = advisory.get('severity', {})
         cvss = severity.get("cvss_v3", None)
         if not cvss:
             cvss = severity.get("cvss_v2", None)
         result["severity_vector"] = cvss
         result["filename"] = path.name
-        cves = advisory.get("cves", None)
-        xrefs = advisory.get("xrefs", None)
+        cves = advisory.get("cves")
+        xrefs = advisory.get("xrefs")
         advisory_xref = advisory.get("advisory_xref", "")
-        refs = {}
-        refs['url'] = [advisory_xref]
-        advisory_id = advisory.get("advisory_id", None)
+        refs = {'url': [advisory_xref]}
+        advisory_id = advisory.get("advisory_id")
         if cves:
             refs['cve'] = cves
         if xrefs:
-            refs['url'] = refs['url'] + xrefs
+            refs['url'] += xrefs
         if advisory_id:
             refs['advisory_id'] = [advisory_id]
 
@@ -142,8 +139,7 @@ class Notus:
         if not self.loaded:
             self.reload_cache()
         for key in self.cache.get_keys():
-            adv = self.cache.get_advisory(key)
-            if adv:
+            if adv := self.cache.get_advisory(key):
                 yield (adv.get("filename", ""), key)
 
     def exists(self, oid: str) -> bool:
@@ -179,7 +175,7 @@ class NotusResultHandler:
         scan_id = result.pop("scan_id")
         timer = None
 
-        if not scan_id in self._results:
+        if scan_id not in self._results:
             self._results[scan_id] = []
             timer = Timer(0.25, self._report_results, [scan_id])
         self._results[scan_id].append(result)
